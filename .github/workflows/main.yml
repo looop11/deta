@@ -87,9 +87,6 @@ jobs:
       - name: Move files to the new folder
         run: mv out/* ${{ steps.set_date.outputs.current_date }}
 
-
-      - name: List files in out1
-        run: ls out1/
       - name: 第4次上传OneDrive
         uses: wei/rclone@v1
         env:
