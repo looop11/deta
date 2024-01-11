@@ -86,14 +86,65 @@ jobs:
       - name: Create folder
         id: create_folder
         run: mkdir ${{ steps.set_date.outputs.current_date }}
-      - name: ls folder
-        run: ls ${{ steps.set_date.outputs.current_date }}
       - name: Move files to the new folder
         run: mv out/* ${{ steps.set_date.outputs.current_date }}
-      - name: List files in the new folder
-        run: ls ${{ steps.set_date.outputs.current_date }}
       - name: Create folder
         run: mkdir out1
+      - name: Move folder to out1
+        run: mv ${{ steps.set_date.outputs.current_date }} out1/
+      - name: Remove the folders
+        run: |
+          rm -r ${{ steps.create_folder.outputs.current_date }}
+          rm -r out/
+
+      - name: 第2次下载文件
+        id: downloading2
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序2
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件2
+        id: encrypt2
+        if: steps.downloading1.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size" 
+
+      - name: Set current date
+        id: set_date1
+        run: echo "::set-output name=current_date::$(date +'%Y-%m-%d')"
+
+      - name: Use current date
+        run: echo "Current Date is ${{ steps.set_date.outputs.current_date }}"
+      - name: Create folder
+        id: create_folder1
+        run: mkdir ${{ steps.set_date.outputs.current_date }}
+      - name: Move files to the new folder
+        run: mv out/* ${{ steps.set_date.outputs.current_date }}
       - name: Move folder to out1
         run: mv ${{ steps.set_date.outputs.current_date }} out1/
 
