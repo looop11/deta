@@ -1,4 +1,4 @@
-name: atest.yml
+name: main.yml
 on:
   repository_dispatch:
   workflow_dispatch:
