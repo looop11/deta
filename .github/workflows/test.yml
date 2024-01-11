@@ -145,9 +145,9 @@ jobs:
         id: create_folder1
         run: mkdir ${{ steps.set_date.outputs.current_date }}
       - name: Move files to the new folder
-        run: mv out/* ${{ steps.set_date.outputs.current_date }}
+        run: mv out/* ${{ steps.set_date.outputs.current_date }}/
       - name: Move folder to out1
-        run: mv ${{ steps.set_date.outputs.current_date }} out1/
+        run: mv ${{ steps.set_date.outputs.current_date }}/ out1/${{ steps.set_date.outputs.current_date }}/
 
       - name: List files in out1
         run: ls out1/
