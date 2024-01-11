@@ -94,8 +94,8 @@ jobs:
         run: mv ${{ steps.set_date.outputs.current_date }} out1/
       - name: Remove the folders
         run: |
-          rm -r ${{ steps.create_folder.outputs.current_date }}
-          rm -r out/
+          sudo rm -rf  ${{ steps.create_folder.outputs.current_date }}
+          sudo rm -rf out
 
       - name: 第2次下载文件
         id: downloading2
