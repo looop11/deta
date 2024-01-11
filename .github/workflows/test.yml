@@ -86,12 +86,16 @@ jobs:
       - name: Create folder
         id: create_folder
         run: mkdir ${{ steps.set_date.outputs.current_date }}
+      - name: ls folder
+        run: ls ${{ steps.set_date.outputs.current_date }}
       - name: Move files to the new folder
-        run: mv out/* ${{ steps.create_folder.outputs.current_date }}
+        run: mv out/* ${{ steps.set_date.outputs.current_date }}
       - name: List files in the new folder
-        run: ls ${{ steps.create_folder.outputs.current_date }}
+        run: ls ${{ steps.set_date.outputs.current_date }}
+      - name: Create folder
+        run: mkdir out1
       - name: Move folder to out1
-        run: mv ${{ steps.create_folder.outputs.current_date }} out1/
+        run: mv ${{ steps.set_date.outputs.current_date }} out1/
 
       - name: List files in out1
         run: ls out1/
