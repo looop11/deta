@@ -1,0 +1,47 @@
+name: 查询空间
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      Folder:
+        description: '保存目录'
+        required: true
+        default: ''
+
+jobs:
+  Aria2-Aliyun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+          fetch-depth: 0 
+      - name: gengxing
+        run: |
+           sudo apt-get update          
+      - name: 检查空间使用情况
+        run: |
+          echo "Free space:"
+          df -h
+
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+           tool-cache: true
+           android: true
+           dotnet: true
+           haskell: true
+           large-packages: true
+           docker-images: false
+           swap-storage: true
+
+      - name: 删除旧的上传记录
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0

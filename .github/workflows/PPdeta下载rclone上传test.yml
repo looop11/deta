@@ -1,0 +1,148 @@
+name: deta PP下载rclone上传test
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      Folder:
+        description: '保存目录'
+        required: true
+        default: '202312'
+
+jobs:
+  Aria2-Aliyun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+          fetch-depth: 0 
+      - name: gengxing
+        run: |
+           sudo apt-get update          
+      - name: 检查空间使用情况
+        run: |
+          echo "Free space:"
+          df -h
+
+         
+      - name: 安装Aria2 1
+        run: sudo apt install -y aria2  >/dev/null 2>&1   
+      - name: 安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 安装所需要的Python信赖 1
+        run: |
+          python -m pip install --upgrade pip wheel  >/dev/null 2>&1  
+          pip install install requests  >/dev/null 2>&1  
+          
+      - name: 下载文件1
+        id: downloading
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)  >/dev/null 2>&1  
+          echo "::set-output name=path::downloads/$filename"  >/dev/null 2>&1  
+          echo "::set-output name=filename::$filename"  >/dev/null 2>&1  
+          echo "::set-output name=taskkey::$taskkey"  >/dev/null 2>&1  
+          size=$(ls -l downloads/$filename | awk '{print $5}' )  >/dev/null 2>&1  
+          echo "::set-output name=size::$size"  >/dev/null 2>&1 
+      - name: 移动文件
+        id: downloading1
+        run: |
+          mkdir downloads1
+      - name: Copy Files
+        run: |
+          mv downloads/  downloads1/
+          sudo rm -rf downloads
+      - name: 保存数据1，删除远程已经下载列表
+        id:  database
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第2次安装Aria2
+        run: sudo apt install -y aria2  >/dev/null 2>&1   
+      - name: 第2次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第2次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel  >/dev/null 2>&1  
+          pip install install requests  >/dev/null 2>&1  
+
+      - name: 第2次下载文件
+        id: downloading2
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)  >/dev/null 2>&1  
+          echo "::set-output name=path::downloads1/$filename"  >/dev/null 2>&1  
+          echo "::set-output name=filename::$filename"  >/dev/null 2>&1  
+          echo "::set-output name=taskkey::$taskkey"  >/dev/null 2>&1  
+          size=$(ls -l downloads/$filename | awk '{print $5}' )  >/dev/null 2>&1  
+          echo "::set-output name=size::$size"  >/dev/null 2>&1     
+      - name: 第2次保存数据，删除远程已经下载列表
+        id:  database2
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading2.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: Copy Files
+        run: |
+          mv downloads/  downloads1
+          sudo rm -rf downloads
+      - name: 第3次安装Aria2
+        run: sudo apt install -y aria2  >/dev/null 2>&1   
+      - name: 第3次安装安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第3次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel  >/dev/null 2>&1  
+          pip install install requests  >/dev/null 2>&1  
+
+          
+      - name: 第3次下载文件
+        id: downloading3
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)  >/dev/null 2>&1  
+          echo "::set-output name=path::downloads/$filename"  >/dev/null 2>&1  
+          echo "::set-output name=filename::$filename"  >/dev/null 2>&1  
+          echo "::set-output name=taskkey::$taskkey"  >/dev/null 2>&1  
+          size=$(ls -l downloads/$filename | awk '{print $5}' )  >/dev/null 2>&1  
+          echo "::set-output name=size::$size"  >/dev/null 2>&1  
+
+
+      - name: Copy Files 1
+        run: |      
+          mv downloads/  downloads1
+          sudo rm -rf downloads
+          cd ${{ github.workspace }}/downloads1
+          ls
+      - name: 第3次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy downloads1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+
+      - name: 第3次保存数据，删除远程已经下载列表
+        id:  database3
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading3.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第3次删除已下载文件
+        run: |
+         sudo rm -rf ${{ github.workspace }}/downloads/
+         sudo rm -rf downloads/
+         sudo rm -rf downloads
+         sudo rm -rf ${{ github.workspace }}/downloads2/
+         sudo rm -rf downloads2/
+         sudo rm -rf downloads2
+         sudo rm -rf ${{ github.workspace }}/downloads3/
+         sudo rm -rf downloads3/
+         sudo rm -rf downloads3

@@ -1,0 +1,24 @@
+name: Send Message to WeChat
+
+on:
+      - main # 可以根据需要更改分支
+
+jobs:
+  send-message:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Send Message to WeChat
+      run: |
+        curl -X POST \
+          -H 'Content-Type: application/json' \
+          -d '{
+                "msgtype": "text",
+                "text": {
+                    "content": "1-4上传完成"
+                }
+            }' \
+          "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=aece934d-121f-49db-8e1f-1a23ccd9af61"

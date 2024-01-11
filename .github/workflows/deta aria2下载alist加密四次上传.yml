@@ -1,0 +1,2076 @@
+name: detaaria2下载alist加密4次上传.yml
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      Folder:
+        description: '保存目录'
+        required: true
+        default: '202312'
+
+jobs:
+  Onedrive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+          fetch-depth: 0 
+      - name: gengxing
+        run: |
+           sudo apt-get update          
+      - name: 检查空间使用情况
+        run: |
+          echo "Free space:"
+          df -h
+
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+           tool-cache: true
+           android: true
+           dotnet: true
+           haskell: true
+           large-packages: true
+           docker-images: false
+           swap-storage: true
+
+      - name: 第1次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第1次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第1次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第1次下载文件
+        id: downloading1
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序1
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件1
+        id: encrypt1
+        if: steps.downloading1.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Create out1 Folder
+        run: mkdir out1
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第1次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第2次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第2次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第2次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第2次下载文件
+        id: downloading2
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第2次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第2次加密文件
+        id: encrypt2
+        if: steps.downloading2.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+
+      - name: 第2次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第3次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第3次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第3次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第3次下载文件
+        id: downloading3
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第3次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第3次加密文件
+        id: encrypt3
+        if: steps.downloading3.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+
+      - name: 第3次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第4次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第4次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第4次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第4次下载文件
+        id: downloading4
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序4
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件4
+        id: encrypt4
+        if: steps.downloading4.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第4次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+
+
+      - name: 第1次保存数据，删除远程已经下载列表
+        id:  database1
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading1.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第2次保存数据，删除远程已经下载列表
+        id:  database2
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading2.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"      
+      - name: 第3次保存数据，删除远程已经下载列表
+        id:  database3
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading3.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第4次保存数据，删除远程已经下载列表
+        id:  database4
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading4.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第4次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+         sudo rm -rf out1
+
+      - name: Install mail command 1
+        run: sudo apt-get install -y mailutils
+
+      - name: Send Email Notification 1 
+        run: |
+         echo "1-4上传完成" | mail -s "githubdetapikpak" -a "From: ${{ secrets.SENDING_EMAIL }}" -a "Content-Type: text/plain;charset=utf-8" ${{ secrets.RECEIVING_EMAIL_ADDRESS }}
+        env:
+         SMTP_USER: ${{ secrets.SMTP_USER }}
+         SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+         SMTP_SERVER: applesmtp.163.com
+         SMTP_PORT: 465
+
+      - name: 第5次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第5次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第5次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第5次下载文件
+        id: downloading5
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第5次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第5次加密文件
+        id: encrypt5
+        if: steps.downloading5.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+
+      - name: Create out1 Folder
+        run: mkdir out1
+
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+      - name: 第5次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第6次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第6次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第6次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第6次下载文件
+        id: downloading6
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第6次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第6次加密文件
+        id: encrypt6
+        if: steps.downloading6.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+                
+      - name: 第6次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第7次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第7次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第7次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第7次下载文件
+        id: downloading7
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序7
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件7
+        id: encrypt7
+        if: steps.downloading7.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第7次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第8次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第8次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第8次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第8次下载文件
+        id: downloading8
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第8次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第8次加密文件
+        id: encrypt8
+        if: steps.downloading8.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+      - name: 第8次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+
+      - name: 第5次保存数据，删除远程已经下载列表
+        id:  database5
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading5.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+     
+      - name: 第6次保存数据，删除远程已经下载列表
+        id:  database6
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading6.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第7次保存数据，删除远程已经下载列表
+        id:  database7
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading7.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第8次保存数据，删除远程已经下载列表
+        id:  database8
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading8.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第8次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+         sudo rm -rf out1
+
+      - name: Install mail command 2
+        run: sudo apt-get install -y mailutils
+
+      - name: Send Email Notification 2 
+        run: |
+         echo "5-8上传完成" | mail -s "githubdetapikpak" -a "From: ${{ secrets.SENDING_EMAIL }}" -a "Content-Type: text/plain;charset=utf-8" ${{ secrets.RECEIVING_EMAIL_ADDRESS }}
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_SERVER: applesmtp.163.com
+          SMTP_PORT: 465
+
+      - name: 第9次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第9次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第9次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第9次下载文件
+        id: downloading9
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第9次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第9次加密文件
+        id: encrypt9
+        if: steps.downloading9.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+
+      - name: Create out1 Folder
+        run: mkdir out1
+
+      - name: Move Files to out1
+        run: mv out/* out1/          
+                
+      - name: 第9次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第10次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第10次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第10次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第10次下载文件
+        id: downloading10
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序10
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件10
+        id: encrypt10
+        if: steps.downloading10.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第10次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第11次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第11次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第11次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第11次下载文件
+        id: downloading11
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第11次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第11次加密文件
+        id: encrypt11
+        if: steps.downloading11.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+
+      - name: 第11次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第12次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第12次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第12次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第12次下载文件
+        id: downloading12
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第12次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第12次加密文件
+        id: encrypt12
+        if: steps.downloading12.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+      
+      - name: 第12次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+
+      - name: 第9次保存数据，删除远程已经下载列表
+        id:  database9
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading9.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第10次保存数据，删除远程已经下载列表
+        id:  database10
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading10.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第11次保存数据，删除远程已经下载列表
+        id:  database11
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading11.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+                
+      - name: 第12次保存数据，删除远程已经下载列表
+        id:  database12
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading12.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第12次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out1
+         sudo rm -rf out
+
+      - name: Install mail command 3
+        run: sudo apt-get install -y mailutils
+
+      - name: Send Email Notification 3 
+        run: |
+          echo "9-12上传完成" | mail -s "githubdetapikpak" -a "From: ${{ secrets.SENDING_EMAIL }}" -a "Content-Type: text/plain;charset=utf-8" ${{ secrets.RECEIVING_EMAIL_ADDRESS }}
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_SERVER: applesmtp.163.com
+          SMTP_PORT: 465
+
+      - name: 第13次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第13次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第13次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第13次下载文件
+        id: downloading13
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序13
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件13
+        id: encrypt13
+        if: steps.downloading13.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Create out1 Folder
+        run: mkdir out1
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第13次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第14次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第14次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第14次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第14次下载文件
+        id: downloading14
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第14次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第14次加密文件
+        id: encrypt14
+        if: steps.downloading14.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+
+      - name: 第14次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第15次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第15次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第15次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第15次下载文件
+        id: downloading15
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第15次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第15次加密文件
+        id: encrypt15
+        if: steps.downloading15.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+      - name: 第15次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第16次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第16次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第16次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第16次下载文件
+        id: downloading16
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序16
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件16
+        id: encrypt16
+        if: steps.downloading16.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第16次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+      - name: 第13次保存数据，删除远程已经下载列表
+        id:  database13
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading13.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+   
+      - name: 第14次保存数据，删除远程已经下载列表
+        id:  database14
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading14.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第15次保存数据，删除远程已经下载列表
+        id:  database15
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading15.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第16次保存数据，删除远程已经下载列表
+        id:  database16
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading16.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第16次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out1
+         sudo rm -rf out
+
+      - name: Install mail command 4
+        run: sudo apt-get install -y mailutils
+
+      - name: Send Email Notification 4 
+        run: |
+          echo "13-16上传完成" | mail -s "githubdetapikpak" -a "From: ${{ secrets.SENDING_EMAIL }}" -a "Content-Type: text/plain;charset=utf-8" ${{ secrets.RECEIVING_EMAIL_ADDRESS }}
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_SERVER: applesmtp.163.com
+          SMTP_PORT: 465
+
+      - name: 第17次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第17次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第17次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第17次下载文件
+        id: downloading17
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第17次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第17次加密文件
+        id: encrypt17
+        if: steps.downloading17.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+
+      - name: Create out1 Folder
+        run: mkdir out1
+
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+
+
+      - name: 第17次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第18次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第18次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第18次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第18次下载文件
+        id: downloading18
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第18次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第18次加密文件
+        id: encrypt18
+        if: steps.downloading18.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+      - name: 第18次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第19次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第19次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第19次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第19次下载文件
+        id: downloading19
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序19
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件19
+        id: encrypt19
+        if: steps.downloading19.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第19次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第20次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第20次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第20次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第20次下载文件
+        id: downloading20
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第20次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第20次加密文件
+        id: encrypt20
+        if: steps.downloading20.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/   
+
+      - name: 第20次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+       
+          
+      - name: 第17次保存数据，删除远程已经下载列表
+        id:  database17
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading17.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+     
+      - name: 第18次保存数据，删除远程已经下载列表
+        id:  database18
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading18.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第19次保存数据，删除远程已经下载列表
+        id:  database19
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading19.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第20次保存数据，删除远程已经下载列表
+        id:  database20
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading20.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第20次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+         sudo rm -rf out1
+
+      - name: Install mail command 5
+        run: sudo apt-get install -y mailutils
+
+      - name: Send Email Notification 5
+        run: |
+          echo "17-20上传完成" | mail -s "githubdetapikpak" -a "From: ${{ secrets.SENDING_EMAIL }}" -a "Content-Type: text/plain;charset=utf-8" ${{ secrets.RECEIVING_EMAIL_ADDRESS }}
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_SERVER: applesmtp.163.com
+          SMTP_PORT: 465
+
+      - name: 第21次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第21次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第21次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第21次下载文件
+        id: downloading21
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第21次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第21次加密文件
+        id: encrypt21
+        if: steps.downloading21.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+
+      - name: Create out1 Folder
+        run: mkdir out1
+
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+      - name: 第21次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第22次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第22次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第22次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第22次下载文件
+        id: downloading22
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序22
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件22
+        id: encrypt22
+        if: steps.downloading22.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第22次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第23次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第23次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第23次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第23次下载文件
+        id: downloading23
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第23次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第23次加密文件
+        id: encrypt23
+        if: steps.downloading23.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+      - name: 第23次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第24次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第24次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第24次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第24次下载文件
+        id: downloading24
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第24次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第24次加密文件
+        id: encrypt24
+        if: steps.downloading24.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+      
+      - name: 第24次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+
+      - name: 第21次保存数据，删除远程已经下载列表
+        id:  database21
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading21.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第22次保存数据，删除远程已经下载列表
+        id:  database22
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading22.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第23次保存数据，删除远程已经下载列表
+        id:  database23
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading23.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"      
+      - name: 第24次保存数据，删除远程已经下载列表
+        id:  database24
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading24.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第24次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out1
+         sudo rm -rf out
+
+      - name: Install mail command 6
+        run: sudo apt-get install -y mailutils
+
+      - name: Send Email Notification 6 
+        run: |
+          echo "21-24上传完成" | mail -s "githubdetapikpak" -a "From: ${{ secrets.SENDING_EMAIL }}" -a "Content-Type: text/plain;charset=utf-8" ${{ secrets.RECEIVING_EMAIL_ADDRESS }}
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_SERVER: applesmtp.163.com
+          SMTP_PORT: 465
+
+      - name: 第25次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第25次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第25次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第25次下载文件
+        id: downloading25
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序25
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件25
+        id: encrypt25
+        if: steps.downloading25.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Create out1 Folder
+        run: mkdir out1
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第25次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第26次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第26次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第26次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第26次下载文件
+        id: downloading26
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第26次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第26次加密文件
+        id: encrypt26
+        if: steps.downloading26.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+
+      - name: 第26次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第27次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第27次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第27次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第27次下载文件
+        id: downloading27
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第27次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第27次加密文件
+        id: encrypt27
+        if: steps.downloading27.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+      - name: 第27次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第28次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第28次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第28次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第28次下载文件
+        id: downloading28
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序28
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件28
+        id: encrypt28
+        if: steps.downloading28.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"          
+
+      - name: Move Files to out1
+        run: mv out/* out1/
+
+      - name: 第28次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+
+      - name: 第25次保存数据，删除远程已经下载列表
+        id:  database25
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading25.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第26次保存数据，删除远程已经下载列表
+        id:  database26
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading26.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"      
+      - name: 第27次保存数据，删除远程已经下载列表
+        id:  database27
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading27.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+      - name: 第28次保存数据，删除远程已经下载列表
+        id:  database28
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading28.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+          
+      - name: 第28次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+         sudo rm -rf out1
+
+      - name: Install mail command 7
+        run: sudo apt-get install -y mailutils
+
+      - name: Send Email Notification 7
+        run: |
+          echo "25-28上传完成" | mail -s "githubdetapikpak" -a "From: ${{ secrets.SENDING_EMAIL }}" -a "Content-Type: text/plain;charset=utf-8" ${{ secrets.RECEIVING_EMAIL_ADDRESS }}
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_SERVER: applesmtp.163.com
+          SMTP_PORT: 465
+
+      - name: 第29次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第29次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第29次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第29次下载文件
+        id: downloading29
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第29次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第29次加密文件
+        id: encrypt29
+        if: steps.downloading29.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+
+      - name: Create out1 Folder
+        run: mkdir out1
+        
+      - name: Move Files to out1
+        run: mv out/* out1/          
+          
+
+      - name: 第29次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out
+
+      - name: 第30次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第30次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第30次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第30次下载文件
+        id: downloading30
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 第30次下载加密程序
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 第30次加密文件
+        id: encrypt30
+        if: steps.downloading30.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"
+
+      - name: Move Files to out1
+        run: mv out/* out1/  
+
+      - name: 第30次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+
+
+      - name: 第29次保存数据，删除远程已经下载列表
+        id:  database29
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading29.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"        
+      - name: 第30次保存数据，删除远程已经下载列表
+        id:  database30
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading30.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"                
+
+      - name: 第30次删除已下载文件
+        run: |
+         sudo rm -rf downloads
+         sudo rm -rf out1
+
+      - name: Install mail command 8
+        run: sudo apt-get install -y mailutils
+
+      - name: Send Email Notification 8 
+        run: |
+          echo "29-30上传完成" | mail -s "githubdetapikpak" -a "From: ${{ secrets.SENDING_EMAIL }}" -a "Content-Type: text/plain;charset=utf-8" ${{ secrets.RECEIVING_EMAIL_ADDRESS }}
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_SERVER: applesmtp.163.com
+          SMTP_PORT: 465
+
+      - name: 删除旧的上传记录
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0
+          
+      - name: Start a new download task
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: detaaria2下载alist加密4次上传.yml
+          ref: main

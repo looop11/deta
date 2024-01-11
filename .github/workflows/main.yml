@@ -1,0 +1,33 @@
+name: Modify System Time and Create Folder
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  modify-system-time:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set timezone to Shanghai
+      run: |
+        sudo timedatectl set-timezone Asia/Shanghai
+        echo "Timezone set to Shanghai"
+        
+    - name: Print current time
+      run: date
+
+    - name: Create folder with current time
+      run: |
+        current_time=$(date +"%Y%m%d")
+        echo "Folder created with name: $current_time"
+    - name: Create folder with current time
+      run: |
+         current_time=${{ secrets.date }}
+         echo "Folder created with name: $current_time"
+
+        

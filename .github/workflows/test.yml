@@ -1,0 +1,105 @@
+name: atest.yml
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      Folder:
+        description: '保存目录'
+        required: true
+        default: '202312'
+
+jobs:
+  Aria2-Aliyun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+          fetch-depth: 0 
+      - name: gengxing
+        run: |
+           sudo apt-get update          
+      - name: 检查空间使用情况
+        run: |
+          echo "Free space:"
+          df -h
+      - name: Set timezone to Shanghai
+        run: |
+          sudo timedatectl set-timezone Asia/Shanghai
+          echo "Timezone set to Shanghai"
+
+
+      - name: 第1次安装Aria2
+        run: sudo apt install -y aria2     
+      - name: 第1次安装Python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: 第1次安装所需要的Python信赖
+        run: |
+          python -m pip install --upgrade pip wheel    
+          pip install install requests    
+
+      - name: 第1次下载文件
+        id: downloading1
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序1
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件1
+        id: encrypt1
+        if: steps.downloading1.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size"   
+
+      - name: Print current time
+        run: date   
+      - name: Set Current Time as Secret
+        id: set_time
+        run: |
+          echo "CURRENT_TIME=$(date +"%Y%m%d%H")" >> $GITHUB_ENV
+      - name: Use Current Time in a Step
+        run: |
+          echo "Current Time: $CURRENT_TIME" 
+           
+      - name: Create Folder
+        run: |
+          mkdir -p out1/${{ secrets.CURRENT_TIME }}
+          echo "Folder created at out1/${{ secrets.CURRENT_TIME }}"
+
+      - name: Move Files to out1
+        run: mv out/*  out1/${{ secrets.CURRENT_TIME }}/
+      - name: Create Folder1111
+        run: |
+          echo "Folder created at out1/${{ secrets.CURRENT_TIME }}"
+      - name: 第4次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: move out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}

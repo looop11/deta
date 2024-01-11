@@ -1,0 +1,29 @@
+name: Send Email Notification
+
+on:
+      - main
+
+jobs:
+  send-email:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install mail command
+      run: sudo apt-get install -y mailutils
+
+    - name: Send Email Notification
+      run: |
+        echo "下载完成" | mail -s "Build Notification" -a "From: ${{ secrets.SENDING_EMAIL }}" -a "Content-Type: text/plain;charset=utf-8" ${{ secrets.RECEIVING_EMAIL_ADDRESS }}
+      env:
+        SMTP_USER: ${{ secrets.SMTP_USER }}
+        SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        SMTP_SERVER: applesmtp.163.com
+        SMTP_PORT: 465
