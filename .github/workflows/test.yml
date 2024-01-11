@@ -135,19 +135,8 @@ jobs:
            size=$(ls -l out/$filename | awk '{print $5}' )
            echo "::set-output name=size::$size" 
 
-      - name: Set current date
-        id: set_date1
-        run: echo "::set-output name=current_date::$(date +'%Y-%m-%d')"
-
-      - name: Use current date
-        run: echo "Current Date is ${{ steps.set_date.outputs.current_date }}"
-      - name: Create folder
-        id: create_folder1
-        run: mkdir ${{ steps.set_date.outputs.current_date }}
-      - name: Move files to the new folder
-        run: mv out/* ${{ steps.set_date.outputs.current_date }}/
       - name: Move folder to out1
-        run: mv ${{ steps.set_date.outputs.current_date }}/ out1/${{ steps.set_date.outputs.current_date }}/
+        run: mv out/ out1/${{ steps.set_date.outputs.current_date }}/
 
       - name: List files in out1
         run: ls out1/
