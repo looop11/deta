@@ -136,10 +136,10 @@ jobs:
            echo "::set-output name=size::$size" 
 
       - name: Move folder to out1
-        run: mv out/ out1/${{ steps.set_date.outputs.current_date }}/
+        run: mv out/* out1/${{ steps.set_date.outputs.current_date }}/
 
       - name: List files in out1
-        run: ls out1/
+        run: ls out1/${{ steps.set_date.outputs.current_date }}/
       - name: 第4次上传OneDrive
         uses: wei/rclone@v1
         env:
