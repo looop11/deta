@@ -77,26 +77,24 @@ jobs:
            size=$(ls -l out/$filename | awk '{print $5}' )
            echo "::set-output name=size::$size"   
 
-      - name: Print current time
-        run: date   
-      - name: Set Current Time as Secret
-        id: set_time
-        run: |
-          echo "CURRENT_TIME=$(date +"%Y%m%d%H")" >> $GITHUB_ENV
-      - name: Use Current Time in a Step
-        run: |
-          echo "Current Time: $CURRENT_TIME" 
-           
-      - name: Create Folder
-        run: |
-          mkdir -p out1/${{ secrets.CURRENT_TIME }}
-          echo "Folder created at out1/${{ secrets.CURRENT_TIME }}"
+      - name: Set current date
+        id: set_date
+        run: echo "::set-output name=current_date::$(date +'%Y-%m-%d')"
 
-      - name: Move Files to out1
-        run: mv out/*  out1/${{ secrets.CURRENT_TIME }}/
-      - name: Create Folder1111
-        run: |
-          echo "Folder created at out1/${{ secrets.CURRENT_TIME }}"
+      - name: Use current date
+        run: echo "Current Date is ${{ steps.set_date.outputs.current_date }}"
+      - name: Create folder
+        id: create_folder
+        run: mkdir ${{ steps.set_date.outputs.current_date }}
+      - name: Move files to the new folder
+        run: mv out/* ${{ steps.create_folder.outputs.current_date }}
+      - name: List files in the new folder
+        run: ls ${{ steps.create_folder.outputs.current_date }}
+      - name: Move folder to out1
+        run: mv ${{ steps.create_folder.outputs.current_date }} out1/
+
+      - name: List files in out1
+        run: ls out1/
       - name: 第4次上传OneDrive
         uses: wei/rclone@v1
         env:
