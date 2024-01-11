@@ -18,16 +18,21 @@ jobs:
         sudo timedatectl set-timezone Asia/Shanghai
         echo "Timezone set to Shanghai"
         
-    - name: Print current time
-      run: date
+    - name: Set current date
+      id: set_date
+      run: echo "::set-output name=current_date::$(date +'%Y-%m-%d')"
 
-    - name: Create folder with current time
-      run: |
-        current_time=$(date +"%Y%m%d")
-        echo "Folder created with name: $current_time"
-    - name: Create folder with current time
-      run: |
-         current_time=${{ secrets.date }}
-         echo "Folder created with name: $current_time"
+    - name: Use current date
+      run: echo "Current Date is ${{ steps.set_date.outputs.current_date }}"
+    - name: Create folder
+      id: create_folder
+      run: mkdir ${{ steps.set_date.outputs.current_date }}
+
+    - name: Set folder path
+      id: set_folder_path
+      run: echo "::set-env name=FOLDER_PATH::${{ steps.create_folder.outputs.current_date }}"
+
+    - name: Output folder path
+      run: echo "Folder Path:$FOLDER_PATH"
 
         
