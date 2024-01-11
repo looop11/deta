@@ -96,6 +96,7 @@ jobs:
         run: |
           sudo rm -rf  ${{ steps.create_folder.outputs.current_date }}
           sudo rm -rf out
+          sudo rm -rf downloads
 
       - name: 第2次下载文件
         id: downloading2
