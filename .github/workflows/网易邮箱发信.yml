@@ -1,4 +1,4 @@
-name: delruns.yml
+name: delruns1.yml
 on:
   repository_dispatch:
   workflow_dispatch:
