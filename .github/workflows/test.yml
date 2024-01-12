@@ -271,13 +271,13 @@ jobs:
       - name: 第3次保存数据，删除远程已经下载列表
         id:  database3
         run: |
-          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading1.outputs.taskkey }}" --act="del"
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading3.outputs.taskkey }}" --act="del"
           echo "::set-output name=status::ok"
 
       - name: 第4次保存数据，删除远程已经下载列表
         id:  database4
         run: |
-          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading2.outputs.taskkey }}" --act="del"
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading4.outputs.taskkey }}" --act="del"
           echo "::set-output name=status::ok" 
       - name: Start a new download task
         uses: benc-uk/workflow-dispatch@v1
