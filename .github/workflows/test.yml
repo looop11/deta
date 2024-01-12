@@ -159,7 +159,19 @@ jobs:
         env:
           RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
         with:
-          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}  
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }} 
+
+      - name: 第1次保存数据，删除远程已经下载列表
+        id:  database1
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading1.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第2次保存数据，删除远程已经下载列表
+        id:  database2
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading2.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"  
       - name: Start a new download task
         uses: benc-uk/workflow-dispatch@v1
         with:
