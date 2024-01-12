@@ -1,9 +1,7 @@
-name: Send Message to WeChat
-
-
-jobs:
-  send-message:
-    runs-on: ubuntu-latest
+name: delruns.yml
+on:
+  repository_dispatch:
+  workflow_dispatch:
 
     steps:
     - name: Checkout Repository
