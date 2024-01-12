@@ -177,3 +177,8 @@ jobs:
         with:
           workflow: atest.yml
           ref: main
+      - name: Start a new download task
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: delruns.yml
+          ref: main
