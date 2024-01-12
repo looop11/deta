@@ -1,7 +1,7 @@
-name: Send Email Notification
-
+name: delruns.yml
 on:
-      - main
+  repository_dispatch:
+  workflow_dispatch:
 
 jobs:
   send-email:
