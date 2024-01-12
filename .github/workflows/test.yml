@@ -151,9 +151,104 @@ jobs:
 
       - name: Move folder to out1
         run: mv out/* out1/${{ steps.set_date.outputs.current_date }}/
+      - name: Remove the folders
+        run: |
+          sudo rm -rf  ${{ steps.create_folder.outputs.current_date }}
+          sudo rm -rf out
+          sudo rm -rf downloads
 
+      - name: 第3次下载文件
+        id: downloading3
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序3
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件3
+        id: encrypt3
+        if: steps.downloading1.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size" 
+
+      - name: Move folder to out3
+        run: mv out/* out1/${{ steps.set_date.outputs.current_date }}/
+      - name: Remove the folders
+        run: |
+          sudo rm -rf  ${{ steps.create_folder.outputs.current_date }}
+          sudo rm -rf out
+          sudo rm -rf downloads
+
+      - name: 第4次下载文件
+        id: downloading4
+        run: |
+          mkdir downloads
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --act="download"
+          filename=$(ls downloads | head -n1)    
+          echo "::set-output name=path::downloads/$filename"    
+          echo "::set-output name=filename::$filename"    
+          echo "::set-output name=taskkey::$taskkey"    
+          size=$(ls -l downloads/$filename | awk '{print $5}' )    
+          echo "::set-output name=size::$size"    
+
+      - name: 下载加密程序4
+        run: |
+          curl -L -o dist.tar.gz https://github.com/githubdesktopaa/alist-encrypt/releases/download/0.0.2/dist.tar.gz
+          tar -xzf dist.tar.gz
+          
+      - name: 加密文件4
+        id: encrypt4
+        if: steps.downloading1.outputs.filename != '' && !cancelled() && !failure()
+        run: |
+           ${{ github.workspace }}/build/alist-encrypt-linux '${{ secrets.ALIST_ENCRYPT_PASSWORD }}' aesctr enc '${{ github.workspace }}/downloads/' '${{ github.workspace }}/out/' encName
+           filename=$(ls out | head -n1)
+           extension=$(awk 'BEGIN{srand();}{a[NR]=$0}END{print a[int(rand()*NR)+1]}' suffixes | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+           filename_no_suffix="${filename%.*}"
+           newfilename="$filename_no_suffix"."$extension"
+           if [ "$filename" != "$newfilename" ]; then
+            	mv out/$filename out/$newfilename
+           fi
+           sha1_s=`openssl sha1 out/$newfilename | awk '{ print $2 }'`
+           header="OC-Checksum:sha1:$sha1_s"
+           echo "::set-output name=header::$header"
+           echo "::set-output name=filename::$newfilename"
+           echo "::set-output name=path::out/$newfilename"
+           size=$(ls -l out/$filename | awk '{print $5}' )
+           echo "::set-output name=size::$size" 
+
+      - name: Move folder to out4
+        run: mv out/* out1/${{ steps.set_date.outputs.current_date }}/
+      - name: Remove the folders
+        run: |
+          sudo rm -rf  ${{ steps.create_folder.outputs.current_date }}
+          sudo rm -rf out
+          sudo rm -rf downloads
       - name: List files in out1
         run: ls out1/${{ steps.set_date.outputs.current_date }}/
+        
       - name: 第1次上传OneDrive
         uses: wei/rclone@v1
         env:
@@ -172,6 +267,18 @@ jobs:
         run: |
           python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading2.outputs.taskkey }}" --act="del"
           echo "::set-output name=status::ok"  
+
+      - name: 第3次保存数据，删除远程已经下载列表
+        id:  database3
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading1.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok"
+
+      - name: 第4次保存数据，删除远程已经下载列表
+        id:  database4
+        run: |
+          python task.py --projet="${{ secrets.DETA_PROJECT_ID }}" --apikey="${{ secrets.DETA_API_KEY }}" --taskkey="${{ steps.downloading2.outputs.taskkey }}" --act="del"
+          echo "::set-output name=status::ok" 
       - name: Start a new download task
         uses: benc-uk/workflow-dispatch@v1
         with:
