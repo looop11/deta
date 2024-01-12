@@ -153,7 +153,6 @@ jobs:
         run: mv out/* out1/${{ steps.set_date.outputs.current_date }}/
       - name: Remove the folders
         run: |
-          sudo rm -rf  ${{ steps.create_folder.outputs.current_date }}
           sudo rm -rf out
           sudo rm -rf downloads
 
@@ -198,7 +197,6 @@ jobs:
         run: mv out/* out1/${{ steps.set_date.outputs.current_date }}/
       - name: Remove the folders
         run: |
-          sudo rm -rf  ${{ steps.create_folder.outputs.current_date }}
           sudo rm -rf out
           sudo rm -rf downloads
 
@@ -243,7 +241,6 @@ jobs:
         run: mv out/* out1/${{ steps.set_date.outputs.current_date }}/
       - name: Remove the folders
         run: |
-          sudo rm -rf  ${{ steps.create_folder.outputs.current_date }}
           sudo rm -rf out
           sudo rm -rf downloads
       - name: List files in out1
