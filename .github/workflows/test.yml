@@ -146,3 +146,8 @@ jobs:
           RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
         with:
           args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }}
+      - name: Start a new download task
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: atest.yml
+          ref: main
