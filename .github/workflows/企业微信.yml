@@ -1,7 +1,5 @@
 name: Send Message to WeChat
 
-on:
-      - main # 可以根据需要更改分支
 
 jobs:
   send-message:
