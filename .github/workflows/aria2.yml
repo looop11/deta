@@ -1,0 +1,89 @@
+name: Aria2下载直链加密转存Aliyun
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      Url:
+        description: '下载URL'
+        required: true
+        default: 'https://网址##名称'
+      Folder:
+        description: '保存目录'
+        required: true
+        default: 'encrypt_folder'
+
+jobs:
+  Aria2-Aliyun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Aria2 Install
+        run: sudo apt install -y aria2
+      - name: gengxing
+        run: |
+           sudo apt-get update          
+      - name: 检查空间使用情况
+        run: |
+          echo "Free space:"
+          df -h
+      - name: Set timezone to Shanghai
+        run: |
+          sudo timedatectl set-timezone Asia/Shanghai
+          echo "Timezone set to Shanghai"
+
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+           tool-cache: true
+           android: true
+           dotnet: true
+           haskell: true
+           large-packages: true
+           docker-images: false
+           swap-storage: true
+      - name: Downloading
+        id: downloading
+        run: |
+          url="${{ github.event.inputs.Url}}"
+          filename=${url##*##}
+          downloadurl=${url%##*}
+          echo "::set-output name=path::downloads/$filename"
+          aria2c --conf $GITHUB_WORKSPACE/aria2.conf --seed-time=0 -d downloads -c $downloadurl -o $filename
+
+      - name: Set current date
+        id: set_date
+        run: echo "::set-output name=current_date::$(date +'%Y-%m-%d')"
+
+      - name: Use current date
+        run: echo "Current Date is ${{ steps.set_date.outputs.current_date }}"
+      - name: Create folder
+        id: create_folder
+        run: mkdir ${{ steps.set_date.outputs.current_date }}
+      - name: Move files to the new folder
+        run: mv downloads/* ${{ steps.set_date.outputs.current_date }}/
+      - name: Create folder
+        run: mkdir out1
+      - name: Move folder to out1
+        run: mv ${{ steps.set_date.outputs.current_date }} out1/
+      - name: Remove the folders
+        run: |
+          sudo rm -rf  ${{ steps.create_folder.outputs.current_date }}
+          sudo rm -rf out
+          sudo rm -rf downloads
+          
+      - name: 第1次上传OneDrive
+        uses: wei/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy out1/  ${{ secrets.TO_UPLOAD_TO_THE_NETDISK_ONEDRIVE }}:${{ secrets.YEARS }}/${{ secrets.VIDEO_PP_SAVE_DIRECTORY }}  ${{ secrets.RCLONE_UPLOAD_CONFIGURATION_PARAMETERS }} 
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v1.2.3
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0
